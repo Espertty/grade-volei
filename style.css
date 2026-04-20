@@ -7,11 +7,7 @@ body {
     position: relative; 
 }
 
-h2 { 
-    text-align: center; 
-    color: #333; 
-    margin-top: 40px; 
-}
+h2 { text-align: center; color: #333; margin-top: 40px; }
 
 .card {
     background: white;
@@ -21,18 +17,9 @@ h2 {
     margin-bottom: 20px;
 }
 
-h3 { 
-    margin-top: 0; 
-    color: #555; 
-    border-bottom: 2px solid #eee; 
-    padding-bottom: 5px; 
-}
+h3 { margin-top: 0; color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px; }
 
-ul { 
-    list-style-type: none; 
-    padding: 0; 
-    margin: 0; 
-}
+ul { list-style-type: none; padding: 0; margin: 0; }
 
 li {
     display: flex;
@@ -42,100 +29,21 @@ li {
     border-bottom: 1px solid #eee;
     font-size: 16px;
 }
+li:last-child { border-bottom: none; }
 
-li:last-child { 
-    border-bottom: none; 
-}
+.btn-action { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+.btn-remove { background: #ccc; color: #333; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+.court-item { background-color: #eccc68; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
 
-.btn-action { 
-    background: #ff4757; 
-    color: white; 
-    border: none; 
-    padding: 8px 12px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold; 
-}
+.input-group { display: flex; gap: 10px; }
+input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+.btn-add { background: #2ed573; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
 
-.btn-remove { 
-    background: #ccc; 
-    color: #333; 
-    border: none; 
-    padding: 6px 10px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold;
-}
+.btn-group { display: flex; gap: 5px; }
+.btn-slot { background: #3498db; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+.slot-empty { background-color: #eaeaea; color: #777; font-style: italic; justify-content: center; }
 
-.court-item { 
-    background-color: #eccc68; 
-    font-weight: bold; 
-    border-radius: 4px; 
-    margin-bottom: 5px; 
-}
-
-.input-group { 
-    display: flex; 
-    gap: 10px; 
-}
-
-input { 
-    flex: 1; 
-    padding: 10px; 
-    border: 1px solid #ccc; 
-    border-radius: 4px; 
-    font-size: 16px; 
-}
-
-.btn-add { 
-    background: #2ed573; 
-    color: white; 
-    border: none; 
-    padding: 10px 15px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold; 
-    font-size: 16px; 
-}
-
-.btn-group { 
-    display: flex; 
-    gap: 5px; 
-}
-
-.btn-slot { 
-    background: #3498db; 
-    color: white; 
-    border: none; 
-    padding: 6px 10px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-size: 12px; 
-    font-weight: bold; 
-}
-
-.slot-empty { 
-    background-color: #eaeaea; 
-    color: #777; 
-    font-style: italic; 
-    justify-content: center; 
-}
-
-.btn-reset { 
-    background: #e74c3c; 
-    color: white; 
-    border: none; 
-    padding: 12px; 
-    border-radius: 4px; 
-    cursor: pointer; 
-    font-weight: bold; 
-    width: 100%; 
-    font-size: 14px; 
-}
-
-.btn-reset:hover { 
-    background: #c0392b; 
-}
+.btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
 
 #loginBtn {
     background: #333;
@@ -150,7 +58,6 @@ input {
     right: 20px;
 }
 
-/* Lógica de esconder botões de admin */
 .admin-only, .admin-only-block { display: none !important; }
 body.is-admin .admin-only { display: inline-block !important; }
 body.is-admin .admin-only-block { display: block !important; }

@@ -1,7 +1,6 @@
 let court = { 1: null, 2: null };
 let queue = [];
 
-// Carrega os dados salvos
 function loadData() {
     const savedCourt = localStorage.getItem("voleiCourt");
     const savedQueue = localStorage.getItem("voleiQueue");
@@ -9,7 +8,6 @@ function loadData() {
     if (savedQueue) queue = JSON.parse(savedQueue);
 }
 
-// Salva os dados
 function saveData() {
     localStorage.setItem("voleiCourt", JSON.stringify(court));
     localStorage.setItem("voleiQueue", JSON.stringify(queue));
@@ -25,16 +23,13 @@ const loginBtn = document.getElementById("loginBtn");
 function render() {
     courtList.innerHTML = "";
     queueList.innerHTML = "";
-
     renderSlot(1);
     renderSlot(2);
 
     queue.forEach((player, index) => {
         const li = document.createElement("li");
-        
         const nameSpan = document.createElement("span");
         nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}`;
-        
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
         
@@ -56,29 +51,38 @@ function render() {
         btnGroup.appendChild(btnV1);
         btnGroup.appendChild(btnV2);
         btnGroup.appendChild(btnRemove);
-
         li.appendChild(nameSpan);
         li.appendChild(btnGroup);
         queueList.appendChild(li);
     });
-
-    saveData(); // Salva toda vez que desenha a tela
+    saveData();
 }
 
 function renderSlot(slotNumber) {
     const li = document.createElement("li");
     const player = court[slotNumber];
-
     if (player) {
         li.className = "court-item";
         li.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
         
-        const btn = document.createElement("button");
-        btn.className = "btn-action admin-only"; 
-        btn.textContent = "Perdeu (Rodar)";
-        btn.onclick = () => playerLost(slotNumber);
-        
-        li.appendChild(btn);
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "btn-group";
+
+        // Botão para perder e rodar a fila
+        const btnLost = document.createElement("button");
+        btnLost.className = "btn-action admin-only"; 
+        btnLost.textContent = "Perdeu";
+        btnLost.onclick = () => playerLost(slotNumber);
+
+        // Novo Botão: Apenas sair da vaga e ir para o fim da fila (sem rodar ninguém automaticamente)
+        const btnExit = document.createElement("button");
+        btnExit.className = "btn-remove admin-only"; 
+        btnExit.textContent = "Sair";
+        btnExit.onclick = () => removeFromSlot(slotNumber);
+
+        btnGroup.appendChild(btnLost);
+        btnGroup.appendChild(btnExit);
+        li.appendChild(btnGroup);
     } else {
         li.className = "slot-empty";
         li.innerHTML = `<span>Vaga ${slotNumber}: Vazia</span>`;
@@ -92,7 +96,6 @@ function addPlayer() {
         if (!court[1]) court[1] = name;
         else if (!court[2]) court[2] = name;
         else queue.push(name);
-        
         inputElement.value = "";
         render();
     }
@@ -102,10 +105,16 @@ function playerLost(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]); 
         court[slotNumber] = null;      
-        
-        if (queue.length > 0) {
-            court[slotNumber] = queue.shift();
-        }
+        if (queue.length > 0) court[slotNumber] = queue.shift();
+        render();
+    }
+}
+
+// Remove especificamente o jogador daquela vaga
+function removeFromSlot(slotNumber) {
+    if (court[slotNumber]) {
+        queue.push(court[slotNumber]);
+        court[slotNumber] = null;
         render();
     }
 }
@@ -123,24 +132,19 @@ function removeManual(index) {
 }
 
 function resetAll() {
-    if (confirm("Tem certeza que deseja apagar todos os nomes da quadra e da fila?")) {
+    if (confirm("Tem certeza que deseja apagar TUDO?")) {
         court = { 1: null, 2: null };
         queue = [];
         localStorage.removeItem("voleiCourt");
         localStorage.removeItem("voleiQueue");
         render();
-        alert("Grade zerada!");
     }
 }
 
-// Eventos de clique e teclado
 addBtn.addEventListener("click", addPlayer);
-inputElement.addEventListener("keypress", (event) => {
-    if (event.key === "Enter") addPlayer();
-});
+inputElement.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
 resetBtn.addEventListener("click", resetAll);
 
-// Lógica de Login
 let isAdmin = false;
 loginBtn.addEventListener("click", () => {
     if (isAdmin) {
@@ -159,6 +163,5 @@ loginBtn.addEventListener("click", () => {
     }
 });
 
-// Inicia a aplicação
 loadData();
 render();
