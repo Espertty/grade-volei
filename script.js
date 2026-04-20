@@ -1,16 +1,21 @@
 let court = { 1: null, 2: null };
 let queue = [];
+let hasAddedName = false; // Nova variável para controlar o bloqueio
 
 function loadData() {
     const savedCourt = localStorage.getItem("voleiCourt");
     const savedQueue = localStorage.getItem("voleiQueue");
+    const savedBlock = localStorage.getItem("voleiHasAdded"); // Busca se já foi bloqueado
+    
     if (savedCourt) court = JSON.parse(savedCourt);
     if (savedQueue) queue = JSON.parse(savedQueue);
+    if (savedBlock === "true") hasAddedName = true;
 }
 
 function saveData() {
     localStorage.setItem("voleiCourt", JSON.stringify(court));
     localStorage.setItem("voleiQueue", JSON.stringify(queue));
+    localStorage.setItem("voleiHasAdded", hasAddedName); // Salva o bloqueio
 }
 
 const courtList = document.getElementById("courtList");
@@ -68,13 +73,11 @@ function renderSlot(slotNumber) {
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
 
-        // Botão para perder e rodar a fila
         const btnLost = document.createElement("button");
         btnLost.className = "btn-action admin-only"; 
         btnLost.textContent = "Perdeu";
         btnLost.onclick = () => playerLost(slotNumber);
 
-        // Novo Botão: Apenas sair da vaga e ir para o fim da fila (sem rodar ninguém automaticamente)
         const btnExit = document.createElement("button");
         btnExit.className = "btn-remove admin-only"; 
         btnExit.textContent = "Sair";
@@ -91,12 +94,26 @@ function renderSlot(slotNumber) {
 }
 
 function addPlayer() {
+    // --- LÓGICA DE BLOQUEIO AQUI ---
+    // Se não for admin E já tiver adicionado um nome, bloqueia.
+    if (!isAdmin && hasAddedName) {
+        alert("Você já adicionou um nome na fila. Aguarde sua vez!");
+        return; 
+    }
+
     const name = inputElement.value.trim();
     if (name) {
         if (!court[1]) court[1] = name;
         else if (!court[2]) court[2] = name;
         else queue.push(name);
+        
         inputElement.value = "";
+        
+        // Se não for admin, marca que essa pessoa já adicionou e trava
+        if (!isAdmin) {
+            hasAddedName = true;
+        }
+        
         render();
     }
 }
@@ -110,7 +127,6 @@ function playerLost(slotNumber) {
     }
 }
 
-// Remove especificamente o jogador daquela vaga
 function removeFromSlot(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]);
@@ -135,8 +151,10 @@ function resetAll() {
     if (confirm("Tem certeza que deseja apagar TUDO?")) {
         court = { 1: null, 2: null };
         queue = [];
+        hasAddedName = false; // Libera o bloqueio ao zerar a grade
         localStorage.removeItem("voleiCourt");
         localStorage.removeItem("voleiQueue");
+        localStorage.removeItem("voleiHasAdded");
         render();
     }
 }
