@@ -1,5 +1,5 @@
 let court = { 1: null, 2: null };
-let scores = { 1: 0, 2: 0 }; // Novo controle de placar
+let scores = { 1: 0, 2: 0 }; 
 let queue = [];
 let hasAddedName = false; 
 
@@ -28,7 +28,7 @@ const inputElement = document.getElementById("newPlayer");
 const addBtn = document.getElementById("addBtn");
 const resetBtn = document.getElementById("resetBtn");
 const loginBtn = document.getElementById("loginBtn");
-const resetScoreBtn = document.getElementById("resetScoreBtn"); // Novo botão
+const resetScoreBtn = document.getElementById("resetScoreBtn"); 
 
 function render() {
     courtList.innerHTML = "";
@@ -91,11 +91,9 @@ function renderSlot(slotNumber) {
     if (player) {
         li.className = "court-item";
         
-        // Info do Jogador
         const infoDiv = document.createElement("div");
         infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
         
-        // Placar
         const scoreDiv = document.createElement("div");
         scoreDiv.className = "score-board";
         
@@ -117,7 +115,6 @@ function renderSlot(slotNumber) {
         scoreDiv.appendChild(scoreDisplay);
         scoreDiv.appendChild(btnPlus);
 
-        // Botões de Ação
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
 
@@ -144,7 +141,6 @@ function renderSlot(slotNumber) {
     courtList.appendChild(li);
 }
 
-// NOVO: Função para alterar placar
 function updateScore(slot, change) {
     scores[slot] += change;
     if (scores[slot] < 0) scores[slot] = 0;
@@ -174,30 +170,33 @@ function addPlayer() {
     }
 }
 
+// Alterado: Agora reseta ambos os placares ao perder
 function playerLost(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]); 
         court[slotNumber] = null;
-        scores[slotNumber] = 0; // Zera o placar ao perder
+        scores = { 1: 0, 2: 0 }; // Reset global para nova partida
         if (queue.length > 0) court[slotNumber] = queue.shift();
         render();
     }
 }
 
+// Alterado: Agora reseta ambos os placares ao sair
 function removeFromSlot(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]);
         court[slotNumber] = null;
-        scores[slotNumber] = 0; // Zera o placar ao sair
+        scores = { 1: 0, 2: 0 }; // Reset global para nova partida
         render();
     }
 }
 
+// Alterado: Agora reseta ambos os placares ao forçar entrada
 function forceEnter(queueIndex, slotNumber) {
     const player = queue.splice(queueIndex, 1)[0]; 
     if (court[slotNumber]) queue.push(court[slotNumber]);
     court[slotNumber] = player;
-    scores[slotNumber] = 0; // Zera o placar ao forçar nova entrada
+    scores = { 1: 0, 2: 0 }; // Reset global para nova partida
     render();
 }
 
@@ -242,7 +241,6 @@ addBtn.addEventListener("click", addPlayer);
 inputElement.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
 resetBtn.addEventListener("click", resetAll);
 
-// Evento do novo botão de Zerar Placar
 if (resetScoreBtn) {
     resetScoreBtn.addEventListener("click", () => {
         if (confirm("Zerar o placar de ambas as vagas?")) {
