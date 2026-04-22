@@ -108,3 +108,17 @@ input::placeholder { color: #888; }
 .admin-only, .admin-only-block { display: none !important; }
 body.is-admin .admin-only { display: inline-block !important; }
 body.is-admin .admin-only-block { display: block !important; }
+
+/* --- AJUSTE DE RESPONSIVIDADE PARA A FILA --- */
+#queueList li {
+    flex-direction: column; /* Coloca o nome em cima e os botões embaixo */
+    align-items: flex-start; /* Alinha o texto à esquerda */
+    gap: 12px; /* Dá um respiro entre o nome e os botões */
+}
+
+#queueList .btn-group {
+    width: 100%; /* Faz o grupo de botões usar toda a largura disponível */
+    flex-wrap: wrap; /* Se os botões não couberem, quebram a linha organizados */
+    justify-content: flex-start; /* Alinha os botões à esquerda */
+    gap: 8px; /* Espaço uniforme entre cada botão */
+}
