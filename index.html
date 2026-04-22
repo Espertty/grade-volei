@@ -8,37 +8,54 @@
 </head>
 <body>
 
-    <div class="top-bar">
-        <span id="connectionStatus" class="status-indicator">🟢 Online</span>
-        <button id="loginBtn" class="btn-login">Área Admin</button>
-    </div>
-
-    <h2>🏐 Grade do Vôlei</h2>
-
-    <div class="card">
-        <div class="court-header">
-            <h3>Dentro de Quadra</h3>
-            <button id="resetScoreBtn" class="btn-reset-score admin-only">Zerar Placar</button>
-        </div>
-        <ul id="courtList"></ul>
-    </div>
-
-    <div class="card">
-        <h3>Fila de Espera</h3>
-        <ul id="queueList"></ul>
-    </div>
-
-    <div class="card">
-        <h3>Adicionar Jogador</h3>
-        <div class="input-group">
-            <input type="text" id="newPlayer" placeholder="Nome do jogador">
-            <button class="btn-add" id="addBtn">Adicionar</button>
+    <div id="lobby-container">
+        <h2>📍 Onde você vai jogar hoje?</h2>
+        <p style="text-align: center; color: #888; margin-bottom: 30px;">Selecione o parque para acessar a grade isolada.</p>
+        
+        <div class="lobby-grid">
+            <button class="btn-lobby" onclick="selectLocal('ramiro')">🌳 Parque Ramiro Ruediger</button>
+            <button class="btn-lobby" onclick="selectLocal('artex')">🏭 Artex (Garcia)</button>
+            <button class="btn-lobby" onclick="selectLocal('itoupavas')">🏞️ Parque das Itoupavas</button>
+            <button class="btn-lobby" onclick="selectLocal('aguaverde')">🚌 Terminal Água Verde</button>
         </div>
     </div>
 
-    <div class="card admin-only-block">
-        <h3 style="border: none;">Gerenciamento</h3>
-        <button class="btn-reset" id="resetBtn">Zerar Grade Completa</button>
+    <div id="app-container" style="display: none;">
+        
+        <div class="top-bar">
+            <button onclick="backToLobby()" class="btn-back">⬅️ Voltar</button>
+            <span id="connectionStatus" class="status-indicator">🟢 Online</span>
+            <button id="loginBtn" class="btn-login">Área Admin</button>
+        </div>
+
+        <h2>🏐 Grade - <span id="parkNameDisplay">Local</span></h2>
+
+        <div class="card">
+            <div class="court-header">
+                <h3>Dentro de Quadra</h3>
+                <button id="resetScoreBtn" class="btn-reset-score admin-only">Zerar Placar</button>
+            </div>
+            <ul id="courtList"></ul>
+        </div>
+
+        <div class="card">
+            <h3>Fila de Espera</h3>
+            <ul id="queueList"></ul>
+        </div>
+
+        <div class="card">
+            <h3>Adicionar Jogador</h3>
+            <div class="input-group">
+                <input type="text" id="newPlayer" placeholder="Nome do jogador">
+                <button class="btn-add" id="addBtn">Adicionar</button>
+            </div>
+        </div>
+
+        <div class="card admin-only-block">
+            <h3 style="border: none;">Gerenciamento</h3>
+            <button class="btn-reset" id="resetBtn">Zerar Grade Deste Parque</button>
+        </div>
+
     </div>
 
     <script src="script.js"></script>

@@ -1,25 +1,50 @@
+// --- SISTEMA DE ROTEAMENTO (MULTITENANCY) ---
+const urlParams = new URLSearchParams(window.location.search);
+const currentLocal = urlParams.get('local'); // Ex: 'ramiro', 'artex'
+
+const locaisNames = {
+    'ramiro': 'Parque Ramiro Ruediger',
+    'artex': 'Artex (Garcia)',
+    'itoupavas': 'Parque das Itoupavas',
+    'aguaverde': 'Terminal Água Verde'
+};
+
+// --- DADOS DA QUADRA ---
 let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
 let queue = [];
 let hasAddedName = false; 
 
+// Agora carregamos do cofre específico do parque atual
 function loadData() {
-    const savedCourt = localStorage.getItem("voleiCourt");
-    const savedScores = localStorage.getItem("voleiScores");
-    const savedQueue = localStorage.getItem("voleiQueue");
-    const savedBlock = localStorage.getItem("voleiHasAdded"); 
+    if (!currentLocal) return; // Se está no lobby, não carrega nada
     
-    if (savedCourt) court = JSON.parse(savedCourt);
-    if (savedScores) scores = JSON.parse(savedScores);
-    if (savedQueue) queue = JSON.parse(savedQueue);
-    if (savedBlock === "true") hasAddedName = true;
+    // Nome do cofre único. Ex: "voleiData_ramiro"
+    const storageKey = `voleiData_${currentLocal}`; 
+    const savedData = localStorage.getItem(storageKey);
+    
+    if (savedData) {
+        const parsed = JSON.parse(savedData);
+        court = parsed.court || court;
+        scores = parsed.scores || scores;
+        queue = parsed.queue || queue;
+        hasAddedName = parsed.hasAddedName || false;
+    }
 }
 
+// Salva tudo empacotado no cofre do parque
 function saveData() {
-    localStorage.setItem("voleiCourt", JSON.stringify(court));
-    localStorage.setItem("voleiScores", JSON.stringify(scores));
-    localStorage.setItem("voleiQueue", JSON.stringify(queue));
-    localStorage.setItem("voleiHasAdded", hasAddedName); 
+    if (!currentLocal) return;
+    const storageKey = `voleiData_${currentLocal}`;
+    
+    const dataToSave = {
+        court: court,
+        scores: scores,
+        queue: queue,
+        hasAddedName: hasAddedName
+    };
+    
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave)); 
 }
 
 const courtList = document.getElementById("courtList");
@@ -167,11 +192,7 @@ function addPlayer() {
         else queue.push(name);
         
         inputElement.value = "";
-        
-        if (!isAdmin) {
-            hasAddedName = true;
-        }
-        
+        if (!isAdmin) hasAddedName = true;
         render();
     }
 }
@@ -227,15 +248,14 @@ function moveDown(index) {
 }
 
 function resetAll() {
-    if (confirm("Tem certeza que deseja apagar TUDO?")) {
+    if (confirm("Tem certeza que deseja apagar a grade DESTE PARQUE?")) {
         court = { 1: null, 2: null };
         scores = { 1: 0, 2: 0 };
         queue = [];
         hasAddedName = false; 
-        localStorage.removeItem("voleiCourt");
-        localStorage.removeItem("voleiScores");
-        localStorage.removeItem("voleiQueue");
-        localStorage.removeItem("voleiHasAdded");
+        
+        // Apaga apenas o cofre do parque atual
+        localStorage.removeItem(`voleiData_${currentLocal}`);
         render();
     }
 }
@@ -264,7 +284,7 @@ loginBtn.addEventListener("click", () => {
             alert("Você precisa de internet para acessar o modo Admin.");
             return; 
         }
-        const senha = prompt("Digite a senha do administrador:");
+        const senha = prompt("Digite a senha do administrador deste parque:");
         if (senha === "volei123") {
             document.body.classList.add("is-admin");
             isAdmin = true;
@@ -275,42 +295,60 @@ loginBtn.addEventListener("click", () => {
     }
 });
 
+// --- FUNÇÕES DO LOBBY ---
+function selectLocal(localId) {
+    window.location.href = `?local=${localId}`;
+}
+
+function backToLobby() {
+    window.location.href = window.location.pathname; // Tira o ?local= e recarrega
+}
+
 // --- SISTEMA HÍBRIDO: DETECÇÃO DE REDE ---
 let isOnline = navigator.onLine; 
 const statusIndicator = document.getElementById("connectionStatus");
-const newPlayerInput = document.getElementById("newPlayer");
 
 function updateNetworkStatus() {
     if (isOnline) {
         statusIndicator.textContent = "🟢 Online";
         statusIndicator.style.color = "#2ed573";
         if (isAdmin) document.body.classList.add("is-admin");
-        
         addBtn.disabled = false;
-        newPlayerInput.disabled = false;
-        newPlayerInput.placeholder = "Nome do jogador";
+        inputElement.disabled = false;
+        inputElement.placeholder = "Nome do jogador";
     } else {
-        statusIndicator.textContent = "🔴 Offline (Apenas Leitura)";
+        statusIndicator.textContent = "🔴 Offline";
         statusIndicator.style.color = "#ff4757";
         document.body.classList.remove("is-admin");
-        
         addBtn.disabled = true;
-        newPlayerInput.disabled = true;
-        newPlayerInput.placeholder = "Sem conexão...";
+        inputElement.disabled = true;
+        inputElement.placeholder = "Sem conexão...";
     }
 }
 
-window.addEventListener("online", () => {
-    isOnline = true;
-    updateNetworkStatus();
-});
+window.addEventListener("online", () => { isOnline = true; updateNetworkStatus(); });
+window.addEventListener("offline", () => { isOnline = false; updateNetworkStatus(); });
 
-window.addEventListener("offline", () => {
-    isOnline = false;
-    updateNetworkStatus();
-});
+// --- INICIALIZAÇÃO DO APP ---
+function initApp() {
+    const lobbyContainer = document.getElementById("lobby-container");
+    const appContainer = document.getElementById("app-container");
+    const parkNameDisplay = document.getElementById("parkNameDisplay");
 
-// Executa funções de inicialização
-loadData();
-updateNetworkStatus();
-render();
+    // Verifica se a URL tem um ?local= válido
+    if (currentLocal && locaisNames[currentLocal]) {
+        lobbyContainer.style.display = "none";
+        appContainer.style.display = "block";
+        parkNameDisplay.textContent = locaisNames[currentLocal]; // Muda o título da página
+        
+        loadData();
+        updateNetworkStatus();
+        render();
+    } else {
+        // Se a URL estiver vazia ou inválida, mostra o Lobby
+        lobbyContainer.style.display = "block";
+        appContainer.style.display = "none";
+    }
+}
+
+initApp(); // Roda ao abrir a página
