@@ -35,44 +35,46 @@ function render() {
         const li = document.createElement("li");
         const nameSpan = document.createElement("span");
         nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}`;
+        
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
         
-        // NOVO: Botão Subir
+        // Botão Subir
         const btnUp = document.createElement("button");
         btnUp.className = "btn-move admin-only";
         btnUp.innerHTML = "⬆️"; 
         btnUp.onclick = () => moveUp(index);
-        if (index === 0) btnUp.style.visibility = "hidden"; // Esconde para o primeiro da fila
+        if (index === 0) btnUp.style.display = "none"; // Esconde para o primeiro
 
-        // NOVO: Botão Descer
+        // Botão Descer
         const btnDown = document.createElement("button");
         btnDown.className = "btn-move admin-only";
         btnDown.innerHTML = "⬇️";
         btnDown.onclick = () => moveDown(index);
-        if (index === queue.length - 1) btnDown.style.visibility = "hidden"; // Esconde para o último da fila
+        if (index === queue.length - 1) btnDown.style.display = "none"; // Esconde para o último
 
-        const btnV1 = document.createElement("button");
-        btnV1.className = "btn-slot admin-only"; 
-        btnV1.textContent = "Ir p/ V1";
-        btnV1.onclick = () => forceEnter(index, 1);
+        // NOVO: Menu de Ações Dropdown
+        const actionSelect = document.createElement("select");
+        actionSelect.className = "action-select admin-only";
+        actionSelect.innerHTML = `
+            <option value="" disabled selected>Ações...</option>
+            <option value="v1">Ir p/ Vaga 1</option>
+            <option value="v2">Ir p/ Vaga 2</option>
+            <option value="sair">Sair da Fila</option>
+        `;
+        
+        // Lógica de quando o usuário escolhe uma opção
+        actionSelect.onchange = (e) => {
+            const acaoEscolhida = e.target.value;
+            if (acaoEscolhida === "v1") forceEnter(index, 1);
+            else if (acaoEscolhida === "v2") forceEnter(index, 2);
+            else if (acaoEscolhida === "sair") removeManual(index);
+        };
 
-        const btnV2 = document.createElement("button");
-        btnV2.className = "btn-slot admin-only";
-        btnV2.textContent = "Ir p/ V2";
-        btnV2.onclick = () => forceEnter(index, 2);
-
-        const btnRemove = document.createElement("button");
-        btnRemove.className = "btn-remove admin-only";
-        btnRemove.textContent = "Sair";
-        btnRemove.onclick = () => removeManual(index);
-
-        // Adicionando todos os botões no grupo
         btnGroup.appendChild(btnUp);
         btnGroup.appendChild(btnDown);
-        btnGroup.appendChild(btnV1);
-        btnGroup.appendChild(btnV2);
-        btnGroup.appendChild(btnRemove);
+        btnGroup.appendChild(actionSelect); // Adiciona o menu no grupo
+        
         li.appendChild(nameSpan);
         li.appendChild(btnGroup);
         queueList.appendChild(li);
@@ -161,7 +163,6 @@ function removeManual(index) {
     render();
 }
 
-// NOVO: Função para subir na fila
 function moveUp(index) {
     if (index > 0) {
         const temp = queue[index];
@@ -171,7 +172,6 @@ function moveUp(index) {
     }
 }
 
-// NOVO: Função para descer na fila
 function moveDown(index) {
     if (index < queue.length - 1) {
         const temp = queue[index];

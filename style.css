@@ -35,47 +35,23 @@ ul {
     margin: 0; 
 }
 
-/* Layout padrão da lista (usado na quadra) */
 li {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 10px;
+    padding: 12px 10px;
     border-bottom: 1px solid #333;
     font-size: 16px;
+    flex-wrap: wrap; /* Permite quebrar linha só se a tela for minúscula */
+    gap: 10px;
 }
 li:last-child { border-bottom: none; }
 
-/* AJUSTE NOVO: Fila de Espera com nome em cima e botões embaixo */
-#queueList li {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-/* AJUSTE NOVO: Os botões se alinham e quebram de linha se a tela for pequena */
-#queueList .btn-group {
-    width: 100%;
-    display: flex;
-    flex-wrap: wrap; 
-    justify-content: flex-start;
-    gap: 8px;
-}
-
-/* Padronizando o tamanho e espaçamento dos botões */
-.btn-group { display: flex; gap: 8px; }
-
 .btn-action { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
 .btn-remove { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-.btn-slot { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
-
-/* Botões de seta levemente mais largos para facilitar o toque */
-.btn-move { background: #555; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
-.btn-move:hover { background: #777; }
-
 .court-item { background-color: #eccc68; color: #111; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
-
 .input-group { display: flex; gap: 10px; }
+
 input { 
     flex: 1; 
     padding: 10px; 
@@ -88,6 +64,33 @@ input {
 input::placeholder { color: #888; }
 
 .btn-add { background: #2ed573; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
+
+.btn-group { 
+    display: flex; 
+    gap: 5px; 
+    align-items: center; 
+}
+
+/* Novo visual pro Menu Dropdown (Select) */
+.action-select {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+}
+
+.action-select option {
+    background: #2a2a2a;
+    color: white;
+}
+
+.btn-move { background: #555; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+.btn-move:hover { background: #777; }
 
 .slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
@@ -106,19 +109,5 @@ input::placeholder { color: #888; }
 }
 
 .admin-only, .admin-only-block { display: none !important; }
-body.is-admin .admin-only { display: inline-block !important; }
+body.is-admin .admin-only { display: inline-flex !important; }
 body.is-admin .admin-only-block { display: block !important; }
-
-/* --- AJUSTE DE RESPONSIVIDADE PARA A FILA --- */
-#queueList li {
-    flex-direction: column; /* Coloca o nome em cima e os botões embaixo */
-    align-items: flex-start; /* Alinha o texto à esquerda */
-    gap: 12px; /* Dá um respiro entre o nome e os botões */
-}
-
-#queueList .btn-group {
-    width: 100%; /* Faz o grupo de botões usar toda a largura disponível */
-    flex-wrap: wrap; /* Se os botões não couberem, quebram a linha organizados */
-    justify-content: flex-start; /* Alinha os botões à esquerda */
-    gap: 8px; /* Espaço uniforme entre cada botão */
-}
