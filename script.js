@@ -1,6 +1,6 @@
 // --- SISTEMA DE ROTEAMENTO (MULTITENANCY) ---
 const urlParams = new URLSearchParams(window.location.search);
-const currentLocal = urlParams.get('local'); // Ex: 'ramiro', 'artex'
+const currentLocal = urlParams.get('local'); 
 
 const locaisNames = {
     'ramiro': 'Parque Ramiro Ruediger',
@@ -9,17 +9,22 @@ const locaisNames = {
     'aguaverde': 'Terminal Água Verde'
 };
 
+// NOVO: Dicionário de senhas exclusivas para cada parque
+const locaisPasswords = {
+    'ramiro': 'ramiro123',
+    'artex': 'artex123',
+    'itoupavas': 'itoupavas123',
+    'aguaverde': 'aguaverde123'
+};
+
 // --- DADOS DA QUADRA ---
 let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
 let queue = [];
 let hasAddedName = false; 
 
-// Agora carregamos do cofre específico do parque atual
 function loadData() {
-    if (!currentLocal) return; // Se está no lobby, não carrega nada
-    
-    // Nome do cofre único. Ex: "voleiData_ramiro"
+    if (!currentLocal) return; 
     const storageKey = `voleiData_${currentLocal}`; 
     const savedData = localStorage.getItem(storageKey);
     
@@ -32,18 +37,10 @@ function loadData() {
     }
 }
 
-// Salva tudo empacotado no cofre do parque
 function saveData() {
     if (!currentLocal) return;
     const storageKey = `voleiData_${currentLocal}`;
-    
-    const dataToSave = {
-        court: court,
-        scores: scores,
-        queue: queue,
-        hasAddedName: hasAddedName
-    };
-    
+    const dataToSave = { court, scores, queue, hasAddedName };
     localStorage.setItem(storageKey, JSON.stringify(dataToSave)); 
 }
 
@@ -253,8 +250,6 @@ function resetAll() {
         scores = { 1: 0, 2: 0 };
         queue = [];
         hasAddedName = false; 
-        
-        // Apaga apenas o cofre do parque atual
         localStorage.removeItem(`voleiData_${currentLocal}`);
         render();
     }
@@ -284,8 +279,15 @@ loginBtn.addEventListener("click", () => {
             alert("Você precisa de internet para acessar o modo Admin.");
             return; 
         }
-        const senha = prompt("Digite a senha do administrador deste parque:");
-        if (senha === "volei123") {
+        
+        // MUDANÇA AQUI: Mostra no prompt qual parque está pedindo a senha
+        const nomeDoParqueAtual = locaisNames[currentLocal];
+        const senha = prompt(`Digite a senha do administrador para o ${nomeDoParqueAtual}:`);
+        
+        // MUDANÇA AQUI: Checa a senha correta no dicionário usando o currentLocal
+        const senhaCorretaDesteParque = locaisPasswords[currentLocal];
+
+        if (senha === senhaCorretaDesteParque) {
             document.body.classList.add("is-admin");
             isAdmin = true;
             loginBtn.textContent = "Sair do Admin";
@@ -301,7 +303,7 @@ function selectLocal(localId) {
 }
 
 function backToLobby() {
-    window.location.href = window.location.pathname; // Tira o ?local= e recarrega
+    window.location.href = window.location.pathname; 
 }
 
 // --- SISTEMA HÍBRIDO: DETECÇÃO DE REDE ---
@@ -335,20 +337,18 @@ function initApp() {
     const appContainer = document.getElementById("app-container");
     const parkNameDisplay = document.getElementById("parkNameDisplay");
 
-    // Verifica se a URL tem um ?local= válido
     if (currentLocal && locaisNames[currentLocal]) {
         lobbyContainer.style.display = "none";
         appContainer.style.display = "block";
-        parkNameDisplay.textContent = locaisNames[currentLocal]; // Muda o título da página
+        parkNameDisplay.textContent = locaisNames[currentLocal]; 
         
         loadData();
         updateNetworkStatus();
         render();
     } else {
-        // Se a URL estiver vazia ou inválida, mostra o Lobby
         lobbyContainer.style.display = "block";
         appContainer.style.display = "none";
     }
 }
 
-initApp(); // Roda ao abrir a página
+initApp();
