@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #121212; /* Fundo principal escuro */
-    color: #e0e0e0; /* Letras claras */
+    background-color: #121212; 
+    color: #e0e0e0; 
     padding: 20px;
     max-width: 500px;
     margin: auto;
@@ -15,17 +15,17 @@ h2 {
 }
 
 .card {
-    background: #1e1e1e; /* Fundo dos blocos levemente mais claro que o fundo */
+    background: #1e1e1e; 
     padding: 15px;
     border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* Sombra mais marcada */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
     margin-bottom: 20px;
 }
 
 h3 { 
     margin-top: 0; 
     color: #cccccc; 
-    border-bottom: 2px solid #333; /* Linha divisória escura */
+    border-bottom: 2px solid #333; 
     padding-bottom: 5px; 
 }
 
@@ -46,16 +46,10 @@ li {
 li:last-child { border-bottom: none; }
 
 .btn-action { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-
-/* Botão "Sair" ajustado para combinar com o fundo escuro */
 .btn-remove { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-
-/* Destaque para quem está em quadra (Amarelo com texto preto para dar leitura) */
 .court-item { background-color: #eccc68; color: #111; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
-
 .input-group { display: flex; gap: 10px; }
 
-/* Caixa de texto ajustada */
 input { 
     flex: 1; 
     padding: 10px; 
@@ -68,16 +62,16 @@ input {
 input::placeholder { color: #888; }
 
 .btn-add { background: #2ed573; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
-
 .btn-group { display: flex; gap: 5px; }
 .btn-slot { background: #3498db; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
 
-/* Vaga vazia mais sutil no tema escuro */
-.slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
+/* Estilo dos novos botões de Subir e Descer */
+.btn-move { background: #555; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+.btn-move:hover { background: #777; }
 
+.slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
 
-/* Botão de Admin no topo */
 #loginBtn {
     background: #333;
     color: white;
@@ -91,7 +85,6 @@ input::placeholder { color: #888; }
     right: 20px;
 }
 
-/* Lógica de esconder itens */
 .admin-only, .admin-only-block { display: none !important; }
 body.is-admin .admin-only { display: inline-block !important; }
 body.is-admin .admin-only-block { display: block !important; }

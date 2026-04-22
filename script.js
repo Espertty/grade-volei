@@ -1,11 +1,11 @@
 let court = { 1: null, 2: null };
 let queue = [];
-let hasAddedName = false; // Nova variável para controlar o bloqueio
+let hasAddedName = false; 
 
 function loadData() {
     const savedCourt = localStorage.getItem("voleiCourt");
     const savedQueue = localStorage.getItem("voleiQueue");
-    const savedBlock = localStorage.getItem("voleiHasAdded"); // Busca se já foi bloqueado
+    const savedBlock = localStorage.getItem("voleiHasAdded"); 
     
     if (savedCourt) court = JSON.parse(savedCourt);
     if (savedQueue) queue = JSON.parse(savedQueue);
@@ -15,7 +15,7 @@ function loadData() {
 function saveData() {
     localStorage.setItem("voleiCourt", JSON.stringify(court));
     localStorage.setItem("voleiQueue", JSON.stringify(queue));
-    localStorage.setItem("voleiHasAdded", hasAddedName); // Salva o bloqueio
+    localStorage.setItem("voleiHasAdded", hasAddedName); 
 }
 
 const courtList = document.getElementById("courtList");
@@ -38,6 +38,20 @@ function render() {
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
         
+        // NOVO: Botão Subir
+        const btnUp = document.createElement("button");
+        btnUp.className = "btn-move admin-only";
+        btnUp.innerHTML = "⬆️"; 
+        btnUp.onclick = () => moveUp(index);
+        if (index === 0) btnUp.style.visibility = "hidden"; // Esconde para o primeiro da fila
+
+        // NOVO: Botão Descer
+        const btnDown = document.createElement("button");
+        btnDown.className = "btn-move admin-only";
+        btnDown.innerHTML = "⬇️";
+        btnDown.onclick = () => moveDown(index);
+        if (index === queue.length - 1) btnDown.style.visibility = "hidden"; // Esconde para o último da fila
+
         const btnV1 = document.createElement("button");
         btnV1.className = "btn-slot admin-only"; 
         btnV1.textContent = "Ir p/ V1";
@@ -53,6 +67,9 @@ function render() {
         btnRemove.textContent = "Sair";
         btnRemove.onclick = () => removeManual(index);
 
+        // Adicionando todos os botões no grupo
+        btnGroup.appendChild(btnUp);
+        btnGroup.appendChild(btnDown);
         btnGroup.appendChild(btnV1);
         btnGroup.appendChild(btnV2);
         btnGroup.appendChild(btnRemove);
@@ -94,8 +111,6 @@ function renderSlot(slotNumber) {
 }
 
 function addPlayer() {
-    // --- LÓGICA DE BLOQUEIO AQUI ---
-    // Se não for admin E já tiver adicionado um nome, bloqueia.
     if (!isAdmin && hasAddedName) {
         alert("Você já adicionou um nome na fila. Aguarde sua vez!");
         return; 
@@ -109,7 +124,6 @@ function addPlayer() {
         
         inputElement.value = "";
         
-        // Se não for admin, marca que essa pessoa já adicionou e trava
         if (!isAdmin) {
             hasAddedName = true;
         }
@@ -147,11 +161,31 @@ function removeManual(index) {
     render();
 }
 
+// NOVO: Função para subir na fila
+function moveUp(index) {
+    if (index > 0) {
+        const temp = queue[index];
+        queue[index] = queue[index - 1];
+        queue[index - 1] = temp;
+        render();
+    }
+}
+
+// NOVO: Função para descer na fila
+function moveDown(index) {
+    if (index < queue.length - 1) {
+        const temp = queue[index];
+        queue[index] = queue[index + 1];
+        queue[index + 1] = temp;
+        render();
+    }
+}
+
 function resetAll() {
     if (confirm("Tem certeza que deseja apagar TUDO?")) {
         court = { 1: null, 2: null };
         queue = [];
-        hasAddedName = false; // Libera o bloqueio ao zerar a grade
+        hasAddedName = false; 
         localStorage.removeItem("voleiCourt");
         localStorage.removeItem("voleiQueue");
         localStorage.removeItem("voleiHasAdded");
