@@ -11,114 +11,111 @@ const firebaseConfig = {
   appId: "1:259646522974:web:2111c41d8f26e346d1d6cf"
 };
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 
 // ==========================================
-// 2. VARIÁVEIS E ESTADO
+// 2. ESTADO E REFERÊNCIAS
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
 const currentLocal = urlParams.get('local'); 
+const dbRef = currentLocal ? database.ref('parques/' + currentLocal) : null;
+const profilesRef = currentLocal ? database.ref('parques/' + currentLocal + '/profiles') : null;
 
-const locaisNames = {
-    'ramiro': 'Parque Ramiro Ruediger',
-    'artex': 'Artex (Garcia)',
-    'itoupavas': 'Parque das Itoupavas',
-    'aguaverde': 'Terminal Água Verde'
-};
+let court = { 1: null, 2: null }; // Agora guarda UIDs
+let queue = []; // Agora guarda UIDs
+let scores = { 1: 0, 2: 0 };
+let allProfiles = {}; // Cache de apelidos { uid: "Apelido" }
+let myUID = null;
+let isAdmin = false;
+
+const locaisNames = { 'ramiro': 'Ramiro', 'artex': 'Artex', 'itoupavas': 'Itoupavas', 'aguaverde': 'Água Verde' };
 const locaisPasswords = { 'ramiro': 'ramiro123', 'artex': 'artex123', 'itoupavas': 'itoupavas123', 'aguaverde': 'aguaverde123' };
 
-const dbRef = database.ref('parques/' + currentLocal);
-
-let court = { 1: null, 2: null };
-let scores = { 1: 0, 2: 0 }; 
-let queue = [];
-let myPlayerName = null; 
-let correctionCount = 0; 
-
-// Elementos UI
-const playerNameDisplay = document.getElementById("playerNameDisplay");
-const identifyBtn = document.getElementById("identifyBtn");
-const editIdentityBtn = document.getElementById("editIdentityBtn");
-const addPlayerGroup = document.getElementById("addPlayerGroup");
-const quickJoinBtn = document.getElementById("quickJoinBtn");
-
 // ==========================================
-// 3. ATUALIZAÇÃO INTELIGENTE DE INTERFACE
+// 3. AUTENTICAÇÃO E PERFIL
 // ==========================================
-function updateFrictionlessUI() {
-    // Se o celular tem um dono definido E não for o Admin digitando pelos outros
-    if (myPlayerName && !isAdmin) {
-        addPlayerGroup.style.display = "none";
-        quickJoinBtn.style.display = "block";
-        quickJoinBtn.textContent = `👉 Entrar na Fila como ${myPlayerName}`;
+
+auth.onAuthStateChanged(async (user) => {
+    const loggedOutUI = document.getElementById("user-logged-out");
+    const loggedInUI = document.getElementById("user-logged-in");
+
+    if (user) {
+        myUID = user.uid;
+        
+        // Verifica se o usuário já tem um apelido salvo
+        const snapshot = await profilesRef.child(myUID).once('value');
+        let profile = snapshot.val();
+
+        if (!profile || !profile.nickname) {
+            // Primeiro login: pede apelido
+            let nick = prompt("Como a galera te chama na quadra? (Apelido)");
+            if (!nick || nick.trim() === "") nick = user.displayName.split(" ")[0];
+            
+            profile = { nickname: nick.trim(), originalName: user.displayName };
+            profilesRef.child(myUID).set(profile);
+        }
+
+        document.getElementById("playerNameDisplay").textContent = profile.nickname;
+        if (loggedOutUI) loggedOutUI.style.display = "none";
+        if (loggedInUI) loggedInUI.style.display = "flex";
     } else {
-        addPlayerGroup.style.display = "flex";
-        quickJoinBtn.style.display = "none";
+        myUID = null;
+        if (loggedOutUI) loggedOutUI.style.display = "block";
+        if (loggedInUI) loggedInUI.style.display = "none";
     }
-}
-
-// ==========================================
-// 4. FIREBASE E DADOS
-// ==========================================
-function startDatabaseListener() {
-    if (!currentLocal) return; 
-
-    const savedMyName = localStorage.getItem(`voleiMyName_${currentLocal}`);
-    const savedCorrection = localStorage.getItem(`voleiCorrection_${currentLocal}`);
-    if (savedCorrection) correctionCount = parseInt(savedCorrection, 10);
-
-    if (savedMyName) {
-        myPlayerName = savedMyName;
-        playerNameDisplay.textContent = myPlayerName;
-        identifyBtn.style.display = "none";
-        editIdentityBtn.style.display = "inline-block"; 
-    }
-
     updateFrictionlessUI();
+});
 
+function loginGoogle() { auth.signInWithPopup(provider); }
+function logout() { if(confirm("Sair da conta?")) auth.signOut(); }
+
+// ==========================================
+// 4. SINCRONIZAÇÃO EM TEMPO REAL
+// ==========================================
+
+function startDatabaseListener() {
+    if (!dbRef) return;
+    
     dbRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
             court = data.court || { 1: null, 2: null };
-            scores = data.scores || { 1: 0, 2: 0 };
             queue = data.queue || [];
-        } else {
-            court = { 1: null, 2: null };
-            scores = { 1: 0, 2: 0 };
-            queue = [];
+            scores = data.scores || { 1: 0, 2: 0 };
+            allProfiles = data.profiles || {};
         }
-        render(); 
+        render();
     });
 }
 
 function saveData() {
-    if (!currentLocal) return;
-    dbRef.set({ court: court, scores: scores, queue: queue });
-    if (myPlayerName) {
-        localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
-        localStorage.setItem(`voleiCorrection_${currentLocal}`, correctionCount);
-    }
+    if (!dbRef) return;
+    dbRef.update({ court, queue, scores });
 }
 
 // ==========================================
-// 5. RENDERIZAÇÃO
+// 5. RENDERIZAÇÃO (MOSTRANDO APELIDOS)
 // ==========================================
-const courtList = document.getElementById("courtList");
-const queueList = document.getElementById("queueList");
-const inputElement = document.getElementById("newPlayer");
-const addBtn = document.getElementById("addBtn");
-const resetBtn = document.getElementById("resetBtn");
-const loginBtn = document.getElementById("loginBtn");
-const resetScoreBtn = document.getElementById("resetScoreBtn"); 
+
+function getNick(uid) {
+    if (!uid) return "Vazio";
+    // Se for um convidado (string manual), retorna o nome. Se for UID, busca no perfil.
+    return allProfiles[uid] ? allProfiles[uid].nickname : uid;
+}
 
 function render() {
+    const courtList = document.getElementById("courtList");
+    const queueList = document.getElementById("queueList");
+    if (!courtList || !queueList) return;
+
     courtList.innerHTML = "";
     queueList.innerHTML = "";
-    
-    if (queue.length > 0 && myPlayerName && queue[0].toLowerCase() === myPlayerName.toLowerCase() && !isAdmin) {
+
+    // Placar / Marcador
+    if (queue.length > 0 && myUID && queue[0] === myUID && !isAdmin) {
         document.body.classList.add("is-scorekeeper");
     } else {
         document.body.classList.remove("is-scorekeeper");
@@ -127,317 +124,152 @@ function render() {
     renderSlot(1);
     renderSlot(2);
 
-    queue.forEach((player, index) => {
+    queue.forEach((uid, index) => {
         const li = document.createElement("li");
-        const nameSpan = document.createElement("span");
-        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
-        nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}${isMe}`;
+        const isMe = (myUID && uid === myUID) ? " (Você)" : "";
+        
+        li.innerHTML = `<span><strong>${index + 1}º</strong> - ${getNick(uid)}${isMe}</span>`;
         
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
-        
-        const btnUp = document.createElement("button");
-        btnUp.className = "btn-move admin-only";
-        btnUp.innerHTML = "⬆️"; btnUp.onclick = () => moveUp(index);
-        if (index === 0) btnUp.style.display = "none"; 
 
-        const btnDown = document.createElement("button");
-        btnDown.className = "btn-move admin-only";
-        btnDown.innerHTML = "⬇️"; btnDown.onclick = () => moveDown(index);
-        if (index === queue.length - 1) btnDown.style.display = "none"; 
+        if (isAdmin) {
+            // Botão de Renomear (Exclusivo Admin)
+            const btnEdit = document.createElement("button");
+            btnEdit.innerHTML = "✏️";
+            btnEdit.className = "btn-move";
+            btnEdit.onclick = () => renamePlayer(uid);
+            btnGroup.appendChild(btnEdit);
 
-        const actionSelect = document.createElement("select");
-        actionSelect.className = "action-select admin-only";
-        actionSelect.innerHTML = `
-            <option value="" disabled selected>Ações...</option>
-            <option value="v1">Ir p/ Vaga 1</option>
-            <option value="v2">Ir p/ Vaga 2</option>
-            <option value="sair">Sair da Fila</option>
-        `;
-        actionSelect.onchange = (e) => {
-            if (e.target.value === "v1") forceEnter(index, 1);
-            else if (e.target.value === "v2") forceEnter(index, 2);
-            else if (e.target.value === "sair") removeManual(index);
-        };
-
-        btnGroup.appendChild(btnUp);
-        btnGroup.appendChild(btnDown);
-        btnGroup.appendChild(actionSelect); 
-        li.appendChild(nameSpan);
+            btnGroup.innerHTML += `
+                <button class="btn-move" onclick="moveUp(${index})">⬆️</button>
+                <select class="action-select" onchange="adminAction(${index}, this.value)">
+                    <option disabled selected>...</option>
+                    <option value="v1">V1</option>
+                    <option value="v2">V2</option>
+                    <option value="sair">Remover</option>
+                </select>`;
+        }
         li.appendChild(btnGroup);
         queueList.appendChild(li);
     });
 }
 
-function renderSlot(slotNumber) {
+function renderSlot(slot) {
+    const uid = court[slot];
     const li = document.createElement("li");
-    const player = court[slotNumber];
-    const currentScore = scores[slotNumber];
-
-    if (player) {
+    if (uid) {
         li.className = "court-item";
-        const infoDiv = document.createElement("div");
-        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
-        infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}${isMe}</span>`;
-        
-        const scoreDiv = document.createElement("div");
-        scoreDiv.className = "score-board";
-        
-        const btnMinus = document.createElement("button");
-        btnMinus.className = "btn-score scorekeeper-only";
-        btnMinus.textContent = "-"; btnMinus.onclick = () => updateScore(slotNumber, -1);
-
-        const scoreDisplay = document.createElement("span");
-        scoreDisplay.id = `score-display-${slotNumber}`;
-        scoreDisplay.className = "score-value";
-        scoreDisplay.textContent = currentScore;
-
-        const btnPlus = document.createElement("button");
-        btnPlus.className = "btn-score scorekeeper-only";
-        btnPlus.textContent = "+"; btnPlus.onclick = () => updateScore(slotNumber, 1);
-
-        scoreDiv.appendChild(btnMinus);
-        scoreDiv.appendChild(scoreDisplay);
-        scoreDiv.appendChild(btnPlus);
-
-        const btnGroup = document.createElement("div");
-        btnGroup.className = "btn-group";
-
-        const btnLost = document.createElement("button");
-        btnLost.className = "btn-action scorekeeper-only"; 
-        btnLost.textContent = "Perdeu"; btnLost.onclick = () => playerLost(slotNumber);
-
-        const btnExit = document.createElement("button");
-        btnExit.className = "btn-remove scorekeeper-only"; 
-        btnExit.textContent = "Sair"; btnExit.onclick = () => removeFromSlot(slotNumber);
-
-        btnGroup.appendChild(btnLost);
-        btnGroup.appendChild(btnExit);
-        li.appendChild(infoDiv);
-        li.appendChild(scoreDiv);
-        li.appendChild(btnGroup);
+        const isMe = (myUID && uid === myUID) ? " (Você)" : "";
+        li.innerHTML = `
+            <div>🏐 <strong>Vaga ${slot}:</strong> ${getNick(uid)}${isMe}</div>
+            <div class="score-board">
+                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},-1)">-</button>
+                <span class="score-value">${scores[slot]}</span>
+                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},1)">+</button>
+            </div>
+            <div class="btn-group">
+                ${isAdmin ? `<button class="btn-move" onclick="renamePlayer('${uid}')">✏️</button>` : ''}
+                <button class="btn-action scorekeeper-only" onclick="playerLost(${slot})">Perdeu</button>
+                <button class="btn-remove scorekeeper-only" onclick="removeFromSlot(${slot})">Sair</button>
+            </div>`;
     } else {
-        li.className = "slot-empty";
-        li.innerHTML = `<span>Vaga ${slotNumber}: Vazia</span>`;
+        li.className = "slot-empty"; li.innerHTML = `Vaga ${slot}: Vazia`;
     }
-    courtList.appendChild(li);
+    document.getElementById("courtList").appendChild(li);
 }
 
 // ==========================================
-// 6. LÓGICA DE AÇÕES
+// 6. FUNÇÃO DE RENOMEAR (A MÁGICA DO ADMIN)
 // ==========================================
-function updateScore(slot, change) {
-    scores[slot] += change;
-    if (scores[slot] < 0) scores[slot] = 0;
-    if (scores[slot] > 25) scores[slot] = 25;
-    saveData();
-}
 
-identifyBtn.addEventListener("click", () => {
-    const nomeInput = prompt("Qual o seu nome na grade?");
-    if (nomeInput && nomeInput.trim() !== "") {
-        myPlayerName = nomeInput.trim();
-        correctionCount = 0; 
-        playerNameDisplay.textContent = myPlayerName;
-        identifyBtn.style.display = "none";
-        editIdentityBtn.style.display = "inline-block"; 
-        updateFrictionlessUI();
-        render();
+function renamePlayer(uidOrName) {
+    // Se for UID (usuário logado), altera no perfil global do banco
+    // Se for string (convidado manual), altera direto na lista
+    const newNick = prompt("Novo apelido fixo para este jogador:");
+    if (!newNick || newNick.trim() === "") return;
+
+    if (allProfiles[uidOrName]) {
+        // Altera no banco de perfis (fica para sempre)
+        profilesRef.child(uidOrName).update({ nickname: newNick.trim() });
+    } else {
+        // É um convidado manual, precisamos trocar o texto na fila/quadra
+        if (court[1] === uidOrName) court[1] = newNick.trim();
+        else if (court[2] === uidOrName) court[2] = newNick.trim();
+        else {
+            const idx = queue.indexOf(uidOrName);
+            if (idx !== -1) queue[idx] = newNick.trim();
+        }
         saveData();
     }
-});
+}
 
-editIdentityBtn.addEventListener("click", () => {
-    if (correctionCount === 0) {
-        const novoNome = prompt(`Você tem 1 CORREÇÃO SEM PENALIDADE.\nCorrigir o nome "${myPlayerName}" para qual nome?`);
-        if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
-            const oldName = myPlayerName;
-            myPlayerName = novoNome.trim();
-            correctionCount++;
+// ==========================================
+// 7. AÇÕES GERAIS
+// ==========================================
 
-            if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) court[1] = myPlayerName;
-            else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) court[2] = myPlayerName;
-            else {
-                const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
-                if (qIndex !== -1) queue[qIndex] = myPlayerName;
-            }
-            playerNameDisplay.textContent = myPlayerName;
-            updateFrictionlessUI();
-            saveData();
-            alert("Nome corrigido com sucesso!");
-        }
+function updateFrictionlessUI() {
+    const addGroup = document.getElementById("addPlayerGroup");
+    const quickBtn = document.getElementById("quickJoinBtn");
+    if (isAdmin) {
+        addGroup.style.display = "flex"; quickBtn.style.display = "none";
+    } else if (myUID) {
+        addGroup.style.display = "none";
+        quickBtn.style.display = "block";
+        quickBtn.textContent = `👉 Entrar na Fila`;
     } else {
-        if (confirm("⚠️ PENALIDADE: Se mudar o nome agora, irá para o FINAL DA FILA. Continuar?")) {
-            const novoNome = prompt("Digite o novo nome:");
-            if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
-                const oldName = myPlayerName;
-                myPlayerName = novoNome.trim();
-                correctionCount++;
-
-                let wasInCourt = false;
-                if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) { court[1] = null; wasInCourt = true; }
-                else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) { court[2] = null; wasInCourt = true; }
-                else {
-                    const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
-                    if (qIndex !== -1) queue.splice(qIndex, 1); 
-                }
-
-                let innocentCount = queue.length;
-                queue.push(myPlayerName);
-
-                if (wasInCourt) {
-                    scores = { 1: 0, 2: 0 };
-                    if (!court[1] && innocentCount > 0) court[1] = queue.shift();
-                    if (!court[2] && innocentCount > 0) court[2] = queue.shift();
-                }
-                playerNameDisplay.textContent = myPlayerName;
-                updateFrictionlessUI();
-                saveData();
-                alert("Punição aplicada: Final da fila.");
-            }
-        }
+        addGroup.style.display = "none"; quickBtn.style.display = "none";
     }
-});
+}
 
-// Ação do novo botão de fricção zero
-quickJoinBtn.addEventListener("click", () => {
-    if (!myPlayerName) return;
-
-    // Verifica se já está na quadra ou na fila para evitar duplicatas
-    const lowerName = myPlayerName.toLowerCase();
-    const inCourt = (court[1] && court[1].toLowerCase() === lowerName) || (court[2] && court[2].toLowerCase() === lowerName);
-    const inQueue = queue.some(p => p.toLowerCase() === lowerName);
-
-    if (inCourt || inQueue) {
-        alert(`Você já está na grade! Aguarde a sua vez ou seu jogo acabar.`);
-        return;
-    }
-
-    if (!court[1]) court[1] = myPlayerName;
-    else if (!court[2]) court[2] = myPlayerName;
-    else queue.push(myPlayerName);
-    
+document.getElementById("quickJoinBtn").onclick = () => {
+    if (!myUID) return;
+    if (court[1] === myUID || court[2] === myUID || queue.includes(myUID)) return alert("Já está na grade!");
+    if (!court[1]) court[1] = myUID; else if (!court[2]) court[2] = myUID; else queue.push(myUID);
     saveData();
-});
+};
 
 function addPlayer() {
-    const name = inputElement.value.trim();
+    const input = document.getElementById("newPlayer");
+    const name = input.value.trim();
     if (name) {
-        if (!court[1]) court[1] = name;
-        else if (!court[2]) court[2] = name;
-        else queue.push(name);
-        inputElement.value = "";
-        
-        if (!isAdmin) {
-            myPlayerName = name;
-            correctionCount = 0; 
-            playerNameDisplay.textContent = myPlayerName;
-            identifyBtn.style.display = "none"; 
-            editIdentityBtn.style.display = "inline-block";
-            updateFrictionlessUI();
-        }
-        saveData();
+        if (!court[1]) court[1] = name; else if (!court[2]) court[2] = name; else queue.push(name);
+        input.value = ""; saveData();
     }
 }
 
-function playerLost(slotNumber) {
-    if (court[slotNumber]) {
-        queue.push(court[slotNumber]); court[slotNumber] = null; scores = { 1: 0, 2: 0 }; 
-        if (queue.length > 0) court[slotNumber] = queue.shift();
-        saveData();
-    }
+// Admin Actions
+function updateScore(s, c) { scores[s] += c; if (scores[s] < 0) scores[s] = 0; saveData(); }
+function playerLost(s) { queue.push(court[s]); court[s] = null; scores = {1:0, 2:0}; if(queue.length > 0) court[s] = queue.shift(); saveData(); }
+function removeFromSlot(s) { queue.push(court[s]); court[s] = null; scores = {1:0, 2:0}; saveData(); }
+function adminAction(i, act) {
+    const p = queue.splice(i, 1)[0];
+    if (act === "v1") { if(court[1]) queue.push(court[1]); court[1] = p; }
+    else if (act === "v2") { if(court[2]) queue.push(court[2]); court[2] = p; }
+    scores = {1:0, 2:0}; saveData();
 }
-function removeFromSlot(slotNumber) {
-    if (court[slotNumber]) {
-        queue.push(court[slotNumber]); court[slotNumber] = null; scores = { 1: 0, 2: 0 }; 
-        saveData();
-    }
-}
-function forceEnter(queueIndex, slotNumber) {
-    const player = queue.splice(queueIndex, 1)[0]; 
-    if (court[slotNumber]) queue.push(court[slotNumber]);
-    court[slotNumber] = player; scores = { 1: 0, 2: 0 }; 
-    saveData();
-}
-function removeManual(index) { queue.splice(index, 1); saveData(); }
-function moveUp(index) { if (index > 0) { const temp = queue[index]; queue[index] = queue[index - 1]; queue[index - 1] = temp; saveData(); } }
-function moveDown(index) { if (index < queue.length - 1) { const temp = queue[index]; queue[index] = queue[index + 1]; queue[index + 1] = temp; saveData(); } }
+function moveUp(i) { if(i>0) { const t=queue[i]; queue[i]=queue[i-1]; queue[i-1]=t; saveData(); } }
 
-function resetAll() {
-    if (confirm("Apagar grade DESTE PARQUE?")) {
-        court = { 1: null, 2: null };
-        scores = { 1: 0, 2: 0 };
-        queue = [];
-        
-        // MUDANÇA AQUI: Removemos o código que apagava a sua identidade! 
-        // O celular continua lembrando quem você é amanhã.
-        
-        saveData(); // Limpa a grade no Firebase
-        alert("Grade zerada com sucesso!");
-    }
-}
-
-addBtn.addEventListener("click", addPlayer);
-inputElement.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
-resetBtn.addEventListener("click", resetAll);
-if (resetScoreBtn) resetScoreBtn.addEventListener("click", () => { if (confirm("Zerar placares?")) { scores = { 1: 0, 2: 0 }; saveData(); } });
-
-let isAdmin = false;
-loginBtn.addEventListener("click", () => {
-    if (isAdmin) {
-        document.body.classList.remove("is-admin");
-        isAdmin = false;
-        loginBtn.textContent = "Área Admin";
-        updateFrictionlessUI(); // Atualiza a UI se saiu do admin
-        render();
-    } else {
-        const senha = prompt(`Senha para ${locaisNames[currentLocal]}:`);
-        if (senha === locaisPasswords[currentLocal]) {
-            document.body.classList.add("is-admin");
-            isAdmin = true;
-            loginBtn.textContent = "Sair do Admin";
-            updateFrictionlessUI(); // Libera as caixas de texto pro admin
-            render();
-        } else {
-            alert("Senha incorreta!");
-        }
-    }
-});
-
-function selectLocal(localId) { window.location.href = `?local=${localId}`; }
+// Inicialização
+function selectLocal(l) { window.location.href = `?local=${l}`; }
 function backToLobby() { window.location.href = window.location.pathname; }
 
-let isOnline = navigator.onLine; 
-const statusIndicator = document.getElementById("connectionStatus");
-
-function updateNetworkStatus() {
-    if (isOnline) {
-        statusIndicator.textContent = "🟢 Online"; statusIndicator.style.color = "#2ed573";
-        addBtn.disabled = false; inputElement.disabled = false;
-    } else {
-        statusIndicator.textContent = "🔴 Offline"; statusIndicator.style.color = "#ff4757";
-        addBtn.disabled = true; inputElement.disabled = true;
+document.getElementById("loginBtn").onclick = () => {
+    if (isAdmin) { isAdmin = false; document.body.classList.remove("is-admin"); }
+    else {
+        const p = prompt("Senha Admin:");
+        if (p === locaisPasswords[currentLocal]) { isAdmin = true; document.body.classList.add("is-admin"); }
     }
+    updateFrictionlessUI(); render();
+};
+
+document.getElementById("resetBtn").onclick = () => { if(confirm("Zerar grade?")) { court={1:null, 2:null}; queue=[]; scores={1:0, 2:0}; saveData(); } };
+document.getElementById("addBtn").onclick = addPlayer;
+document.getElementById("newPlayer").onkeypress = (e) => { if(e.key === "Enter") addPlayer(); };
+
+if (currentLocal) {
+    document.getElementById("lobby-container").style.display = "none";
+    document.getElementById("app-container").style.display = "block";
+    document.getElementById("parkNameDisplay").textContent = locaisNames[currentLocal];
+    startDatabaseListener();
 }
-
-window.addEventListener("online", () => { isOnline = true; updateNetworkStatus(); });
-window.addEventListener("offline", () => { isOnline = false; updateNetworkStatus(); });
-
-function initApp() {
-    const lobbyContainer = document.getElementById("lobby-container");
-    const appContainer = document.getElementById("app-container");
-    const parkNameDisplay = document.getElementById("parkNameDisplay");
-
-    if (currentLocal && locaisNames[currentLocal]) {
-        lobbyContainer.style.display = "none";
-        appContainer.style.display = "block";
-        parkNameDisplay.textContent = locaisNames[currentLocal]; 
-        startDatabaseListener();
-        updateNetworkStatus();
-    } else {
-        lobbyContainer.style.display = "block";
-        appContainer.style.display = "none";
-    }
-}
-
-initApp();
