@@ -37,9 +37,8 @@ const addPlayerGroup = document.getElementById("addPlayerGroup");
 const quickJoinBtn = document.getElementById("quickJoinBtn");
 
 // ==========================================
-// 3. SISTEMA DE IDENTIDADE (FIX: APELIDO)
+// 3. SISTEMA DE IDENTIDADE
 // ==========================================
-
 auth.onAuthStateChanged(async (user) => {
     const loggedOutUI = document.getElementById("user-logged-out");
     const loggedInUI = document.getElementById("user-logged-in");
@@ -49,7 +48,6 @@ auth.onAuthStateChanged(async (user) => {
         const snapshot = await userRef.once('value');
         const userData = snapshot.val();
 
-        // Se já existe um apelido no banco, usa ele. Se não, força a criação.
         if (userData && userData.nickname) {
             myPlayerName = userData.nickname;
         } else {
@@ -68,43 +66,40 @@ auth.onAuthStateChanged(async (user) => {
     render();
 });
 
-// Função para definir ou trocar o apelido
 async function definirNovoApelido(user = auth.currentUser) {
     if (!user) return;
-    
     let nick = prompt(`Como você quer ser chamado na grade?`, myPlayerName || "");
-    
     if (!nick || nick.trim() === "") {
-        if (!myPlayerName) nick = user.displayName.split(" ")[0]; // Padrão se for vazio
-        else return; // Cancela se já tiver um e deixou vazio
+        if (!myPlayerName) nick = user.displayName.split(" ")[0];
+        else return;
     }
-
     myPlayerName = nick.trim();
-    await database.ref('users/' + user.uid).set({ 
-        nickname: myPlayerName, 
-        email: user.email 
-    });
-    
+    await database.ref('users/' + user.uid).set({ nickname: myPlayerName, email: user.email });
     if (playerNameDisplay) playerNameDisplay.textContent = myPlayerName;
     updateFrictionlessUI();
     render();
 }
 
-function loginGoogle() {
-    auth.signInWithPopup(provider).catch(e => alert("Erro ao logar: " + e.message));
+function editPlayerName(type, id) {
+    if (!isAdmin) return;
+    let oldName = (type === 'court') ? court[id] : queue[id];
+    let newName = prompt(`Editar apelido de: ${oldName}`, oldName);
+    if (newName && newName.trim() !== "" && newName !== oldName) {
+        if (type === 'court') court[id] = newName.trim();
+        else queue[id] = newName.trim();
+        saveData();
+    }
 }
 
+function loginGoogle() { auth.signInWithPopup(provider).catch(e => alert("Erro: " + e.message)); }
 function logout() { if(confirm("Deseja sair?")) auth.signOut(); }
 
 // ==========================================
-// 4. LÓGICA DE NAVEGAÇÃO
+// 4. NAVEGAÇÃO E BANCO
 // ==========================================
 function selectLocal(localId) { window.location.href = `?local=${localId}`; }
 function backToLobby() { window.location.href = window.location.pathname; }
 
-// ==========================================
-// 5. BANCO DE DADOS
-// ==========================================
 function startDatabaseListener() {
     if (!dbRef) return;
     dbRef.on('value', (snapshot) => {
@@ -123,7 +118,7 @@ function startDatabaseListener() {
 function saveData() { if (dbRef) dbRef.set({ court, queue, scores }); }
 
 // ==========================================
-// 6. INTERFACE (UI)
+// 5. INTERFACE (UI)
 // ==========================================
 function updateFrictionlessUI() {
     if (isAdmin) {
@@ -147,7 +142,8 @@ function render() {
     if (!courtList || !queueList) return;
     courtList.innerHTML = ""; queueList.innerHTML = "";
 
-    if (queue.length > 0 && myPlayerName && queue[0].toLowerCase() === myPlayerName.toLowerCase() && !isAdmin) {
+    const lowerMe = myPlayerName ? myPlayerName.toLowerCase() : "";
+    if (queue.length > 0 && queue[0].toLowerCase() === lowerMe && !isAdmin) {
         document.body.classList.add("is-scorekeeper");
     } else {
         document.body.classList.remove("is-scorekeeper");
@@ -157,11 +153,21 @@ function render() {
 
     queue.forEach((player, index) => {
         const li = document.createElement("li");
-        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
+        const isMe = (myPlayerName && player.toLowerCase() === lowerMe) ? " (Você)" : "";
         li.innerHTML = `<span><strong>${index + 1}º</strong> - ${player}${isMe}</span>`;
+        
         if (isAdmin) {
             const bg = document.createElement("div"); bg.className = "btn-group";
-            bg.innerHTML = `<button class="btn-move" onclick="moveUp(${index})">⬆️</button><button class="btn-move" onclick="moveDown(${index})">⬇️</button><select class="action-select" onchange="adminAction(${index}, this.value)"><option disabled selected>Ações...</option><option value="v1">Mover V1</option><option value="v2">Mover V2</option><option value="sair">Remover</option></select>`;
+            bg.innerHTML = `
+                <button class="btn-move" onclick="moveUp(${index})">⬆️</button>
+                <button class="btn-move" onclick="moveDown(${index})">⬇️</button>
+                <select class="action-select" onchange="adminAction(${index}, this.value)">
+                    <option disabled selected>...</option>
+                    <option value="v1">V1</option>
+                    <option value="v2">V2</option>
+                    <option value="renomear">Renomear</option>
+                    <option value="sair">Sair</option>
+                </select>`;
             li.appendChild(bg);
         }
         queueList.appendChild(li);
@@ -173,8 +179,32 @@ function renderSlot(slot) {
     const li = document.createElement("li");
     if (p) {
         li.className = "court-item";
-        const isMe = (myPlayerName && p.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
-        li.innerHTML = `<div>🏐 <strong>Vaga ${slot}:</strong> ${p}${isMe}</div><div class="score-board"><button class="btn-score scorekeeper-only" onclick="updateScore(${slot},-1)">-</button><span class="score-value">${scores[slot]}</span><button class="btn-score scorekeeper-only" onclick="updateScore(${slot},1)">+</button></div><div class="btn-group"><button class="btn-action scorekeeper-only" onclick="playerLost(${slot})">Perdeu</button><button class="btn-remove scorekeeper-only" onclick="removeFromSlot(${slot})">Sair</button></div>`;
+        const isMe = (myPlayerName && p.toLowerCase() === (myPlayerName ? myPlayerName.toLowerCase() : "")) ? " (Você)" : "";
+        
+        let innerHTML = `<div>🏐 <strong>Vaga ${slot}:</strong> ${p}${isMe}</div>`;
+        
+        innerHTML += `
+            <div class="score-board">
+                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},-1)">-</button>
+                <span class="score-value">${scores[slot]}</span>
+                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},1)">+</button>
+            </div>`;
+
+        innerHTML += `
+            <div class="btn-group">
+                <button class="btn-action scorekeeper-only" onclick="playerLost(${slot})">Perdeu</button>
+                <button class="btn-remove" onclick="removeFromSlot(${slot})">Sair</button>`;
+        
+        if (isAdmin) {
+            innerHTML += `
+                <select class="action-select" onchange="adminCourtAction(${slot}, this.value)">
+                    <option disabled selected>Ações...</option>
+                    <option value="renomear">Renomear</option>
+                </select>`;
+        }
+        
+        innerHTML += `</div>`;
+        li.innerHTML = innerHTML;
     } else {
         li.className = "slot-empty"; li.innerHTML = `Vaga ${slot}: Vazia`;
     }
@@ -182,7 +212,7 @@ function renderSlot(slot) {
 }
 
 // ==========================================
-// 7. AÇÕES
+// 6. AÇÕES
 // ==========================================
 if (quickJoinBtn) {
     quickJoinBtn.addEventListener("click", () => {
@@ -197,15 +227,22 @@ if (quickJoinBtn) {
 function updateScore(s, c) { scores[s] += c; if (scores[s] < 0) scores[s] = 0; saveData(); }
 function playerLost(s) { if (court[s]) { queue.push(court[s]); court[s] = null; scores = { 1: 0, 2: 0 }; if (queue.length > 0) court[s] = queue.shift(); saveData(); } }
 function removeFromSlot(s) { if (court[s]) { queue.push(court[s]); court[s] = null; scores = { 1: 0, 2: 0 }; saveData(); } }
+
 function adminAction(i, a) {
-    if (a === "sair") { queue.splice(i, 1); } 
+    if (a === "renomear") { editPlayerName('queue', i); }
+    else if (a === "sair") { queue.splice(i, 1); saveData(); } 
     else {
         const p = queue.splice(i, 1)[0];
         if (a === "v1") { if (court[1]) queue.push(court[1]); court[1] = p; } 
         else { if (court[2]) queue.push(court[2]); court[2] = p; }
+        scores = { 1: 0, 2: 0 }; saveData();
     }
-    scores = { 1: 0, 2: 0 }; saveData();
 }
+
+function adminCourtAction(slot, a) {
+    if (a === "renomear") { editPlayerName('court', slot); }
+}
+
 function moveUp(i) { if(i>0){ const t=queue[i]; queue[i]=queue[i-1]; queue[i-1]=t; saveData(); } }
 function moveDown(i) { if(i<queue.length-1){ const t=queue[i]; queue[i]=queue[i+1]; queue[i+1]=t; saveData(); } }
 
@@ -218,7 +255,6 @@ function addPlayer() {
     }
 }
 
-// ADMIN LOGIN
 const loginBtn = document.getElementById("loginBtn");
 if (loginBtn) {
     loginBtn.addEventListener("click", () => {
@@ -232,6 +268,7 @@ if (loginBtn) {
     });
 }
 
+function resetPlacarManual() { scores = {1:0, 2:0}; saveData(); }
 document.getElementById("resetBtn")?.addEventListener("click", () => { if (confirm("Zerar grade?")) { court={1:null,2:null}; queue=[]; scores={1:0,2:0}; saveData(); } });
 document.getElementById("addBtn")?.addEventListener("click", addPlayer);
 document.getElementById("newPlayer")?.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });

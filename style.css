@@ -29,10 +29,9 @@ body {
     margin: 0 20px 20px 20px; display: flex; justify-content: space-between; align-items: center;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.identity-info { font-size: 13px; color: #aaa; display: flex; flex-direction: column; }
-#playerNameDisplay { color: #3498db; font-size: 15px; margin-top: 2px; }
+.identity-info { font-size: 13px; color: #aaa; display: flex; align-items: center; gap: 10px; }
+#playerNameDisplay { color: #3498db; font-size: 15px; }
 .btn-identify { background: #3498db; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
-.btn-edit-identity { background: #f39c12; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
 h2 { text-align: center; color: #ffffff; margin-bottom: 20px; }
 
@@ -51,15 +50,12 @@ ul { list-style-type: none; padding: 0; margin: 0; }
 li { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #333; font-size: 16px; flex-wrap: wrap; gap: 10px; }
 li:last-child { border-bottom: none; }
 .court-item { background-color: #eccc68; color: #111; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
-.slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
+.slot-empty { background-color: #2a2a2a; color: #444; font-style: italic; justify-content: center; }
 
 .input-group { display: flex; gap: 10px; }
 input { flex: 1; padding: 10px; border: 1px solid #444; background-color: #2a2a2a; color: white; border-radius: 4px; font-size: 16px; }
-input::placeholder { color: #888; }
-input:disabled { background-color: #1a1a1a; cursor: not-allowed; }
 
 .btn-add { background: #2ed573; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
-.btn-add:disabled { background: #444; cursor: not-allowed; }
 .btn-action { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
 .btn-remove { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
@@ -68,17 +64,19 @@ input:disabled { background-color: #1a1a1a; cursor: not-allowed; }
 .action-select { background: #3498db; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; }
 .action-select option { background: #2a2a2a; color: white; }
 .btn-move { background: #555; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-.btn-move:hover { background: #777; }
 
 .score-board { display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.1); padding: 4px 10px; border-radius: 6px; }
 .score-value { font-size: 18px; font-weight: bold; min-width: 24px; text-align: center; }
 .btn-score { background: #333; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.btn-score:hover { background: #555; }
 
+/* VISIBILIDADE */
 .admin-only, .admin-only-block, .scorekeeper-only, .scorekeeper-only-block { display: none !important; }
+
 body.is-admin .admin-only { display: inline-flex !important; }
 body.is-admin .admin-only-block { display: block !important; }
 body.is-admin .scorekeeper-only { display: inline-flex !important; }
-body.is-admin .scorekeeper-only-block { display: none !important; } 
+body.is-admin .btn-remove { display: inline-flex !important; } 
+
 body.is-scorekeeper .scorekeeper-only { display: inline-flex !important; }
 body.is-scorekeeper .scorekeeper-only-block { display: block !important; }
+body.is-scorekeeper .btn-remove { display: none !important; }
