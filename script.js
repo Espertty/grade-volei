@@ -1,3 +1,24 @@
+// ==========================================
+// 1. CONFIGURAÇÃO DO FIREBASE
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBFdVDye-g-RpbgiWOWfYw70NWAIoYpXao",
+  authDomain: "grade-volei-blumenau.firebaseapp.com",
+  databaseURL: "https://grade-volei-blumenau-default-rtdb.firebaseio.com",
+  projectId: "grade-volei-blumenau",
+  storageBucket: "grade-volei-blumenau.firebasestorage.app",
+  messagingSenderId: "259646522974",
+  appId: "1:259646522974:web:2111c41d8f26e346d1d6cf"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const database = firebase.database();
+
+// ==========================================
+// 2. VARIÁVEIS E ESTADO
+// ==========================================
 const urlParams = new URLSearchParams(window.location.search);
 const currentLocal = urlParams.get('local'); 
 
@@ -7,13 +28,9 @@ const locaisNames = {
     'itoupavas': 'Parque das Itoupavas',
     'aguaverde': 'Terminal Água Verde'
 };
+const locaisPasswords = { 'ramiro': 'ramiro123', 'artex': 'artex123', 'itoupavas': 'itoupavas123', 'aguaverde': 'aguaverde123' };
 
-const locaisPasswords = {
-    'ramiro': 'ramiro123',
-    'artex': 'artex123',
-    'itoupavas': 'itoupavas123',
-    'aguaverde': 'aguaverde123'
-};
+const dbRef = database.ref('parques/' + currentLocal);
 
 let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
@@ -21,18 +38,36 @@ let queue = [];
 let myPlayerName = null; 
 let correctionCount = 0; 
 
+// Elementos UI
 const playerNameDisplay = document.getElementById("playerNameDisplay");
 const identifyBtn = document.getElementById("identifyBtn");
 const editIdentityBtn = document.getElementById("editIdentityBtn");
+const addPlayerGroup = document.getElementById("addPlayerGroup");
+const quickJoinBtn = document.getElementById("quickJoinBtn");
 
-function loadData() {
+// ==========================================
+// 3. ATUALIZAÇÃO INTELIGENTE DE INTERFACE
+// ==========================================
+function updateFrictionlessUI() {
+    // Se o celular tem um dono definido E não for o Admin digitando pelos outros
+    if (myPlayerName && !isAdmin) {
+        addPlayerGroup.style.display = "none";
+        quickJoinBtn.style.display = "block";
+        quickJoinBtn.textContent = `👉 Entrar na Fila como ${myPlayerName}`;
+    } else {
+        addPlayerGroup.style.display = "flex";
+        quickJoinBtn.style.display = "none";
+    }
+}
+
+// ==========================================
+// 4. FIREBASE E DADOS
+// ==========================================
+function startDatabaseListener() {
     if (!currentLocal) return; 
-    const storageKey = `voleiData_${currentLocal}`; 
-    const savedData = localStorage.getItem(storageKey);
-    
+
     const savedMyName = localStorage.getItem(`voleiMyName_${currentLocal}`);
     const savedCorrection = localStorage.getItem(`voleiCorrection_${currentLocal}`);
-    
     if (savedCorrection) correctionCount = parseInt(savedCorrection, 10);
 
     if (savedMyName) {
@@ -41,27 +76,36 @@ function loadData() {
         identifyBtn.style.display = "none";
         editIdentityBtn.style.display = "inline-block"; 
     }
-    
-    if (savedData) {
-        const parsed = JSON.parse(savedData);
-        court = parsed.court || court;
-        scores = parsed.scores || scores;
-        queue = parsed.queue || queue;
-    }
+
+    updateFrictionlessUI();
+
+    dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            court = data.court || { 1: null, 2: null };
+            scores = data.scores || { 1: 0, 2: 0 };
+            queue = data.queue || [];
+        } else {
+            court = { 1: null, 2: null };
+            scores = { 1: 0, 2: 0 };
+            queue = [];
+        }
+        render(); 
+    });
 }
 
 function saveData() {
     if (!currentLocal) return;
-    const storageKey = `voleiData_${currentLocal}`;
-    const dataToSave = { court, scores, queue };
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave)); 
-    
+    dbRef.set({ court: court, scores: scores, queue: queue });
     if (myPlayerName) {
         localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
         localStorage.setItem(`voleiCorrection_${currentLocal}`, correctionCount);
     }
 }
 
+// ==========================================
+// 5. RENDERIZAÇÃO
+// ==========================================
 const courtList = document.getElementById("courtList");
 const queueList = document.getElementById("queueList");
 const inputElement = document.getElementById("newPlayer");
@@ -86,7 +130,6 @@ function render() {
     queue.forEach((player, index) => {
         const li = document.createElement("li");
         const nameSpan = document.createElement("span");
-        
         const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
         nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}${isMe}`;
         
@@ -95,14 +138,12 @@ function render() {
         
         const btnUp = document.createElement("button");
         btnUp.className = "btn-move admin-only";
-        btnUp.innerHTML = "⬆️"; 
-        btnUp.onclick = () => moveUp(index);
+        btnUp.innerHTML = "⬆️"; btnUp.onclick = () => moveUp(index);
         if (index === 0) btnUp.style.display = "none"; 
 
         const btnDown = document.createElement("button");
         btnDown.className = "btn-move admin-only";
-        btnDown.innerHTML = "⬇️";
-        btnDown.onclick = () => moveDown(index);
+        btnDown.innerHTML = "⬇️"; btnDown.onclick = () => moveDown(index);
         if (index === queue.length - 1) btnDown.style.display = "none"; 
 
         const actionSelect = document.createElement("select");
@@ -113,23 +154,19 @@ function render() {
             <option value="v2">Ir p/ Vaga 2</option>
             <option value="sair">Sair da Fila</option>
         `;
-        
         actionSelect.onchange = (e) => {
-            const acaoEscolhida = e.target.value;
-            if (acaoEscolhida === "v1") forceEnter(index, 1);
-            else if (acaoEscolhida === "v2") forceEnter(index, 2);
-            else if (acaoEscolhida === "sair") removeManual(index);
+            if (e.target.value === "v1") forceEnter(index, 1);
+            else if (e.target.value === "v2") forceEnter(index, 2);
+            else if (e.target.value === "sair") removeManual(index);
         };
 
         btnGroup.appendChild(btnUp);
         btnGroup.appendChild(btnDown);
         btnGroup.appendChild(actionSelect); 
-        
         li.appendChild(nameSpan);
         li.appendChild(btnGroup);
         queueList.appendChild(li);
     });
-    saveData();
 }
 
 function renderSlot(slotNumber) {
@@ -140,7 +177,6 @@ function renderSlot(slotNumber) {
     if (player) {
         li.className = "court-item";
         const infoDiv = document.createElement("div");
-        
         const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
         infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}${isMe}</span>`;
         
@@ -149,8 +185,7 @@ function renderSlot(slotNumber) {
         
         const btnMinus = document.createElement("button");
         btnMinus.className = "btn-score scorekeeper-only";
-        btnMinus.textContent = "-";
-        btnMinus.onclick = () => updateScore(slotNumber, -1);
+        btnMinus.textContent = "-"; btnMinus.onclick = () => updateScore(slotNumber, -1);
 
         const scoreDisplay = document.createElement("span");
         scoreDisplay.id = `score-display-${slotNumber}`;
@@ -159,8 +194,7 @@ function renderSlot(slotNumber) {
 
         const btnPlus = document.createElement("button");
         btnPlus.className = "btn-score scorekeeper-only";
-        btnPlus.textContent = "+";
-        btnPlus.onclick = () => updateScore(slotNumber, 1);
+        btnPlus.textContent = "+"; btnPlus.onclick = () => updateScore(slotNumber, 1);
 
         scoreDiv.appendChild(btnMinus);
         scoreDiv.appendChild(scoreDisplay);
@@ -171,17 +205,14 @@ function renderSlot(slotNumber) {
 
         const btnLost = document.createElement("button");
         btnLost.className = "btn-action scorekeeper-only"; 
-        btnLost.textContent = "Perdeu";
-        btnLost.onclick = () => playerLost(slotNumber);
+        btnLost.textContent = "Perdeu"; btnLost.onclick = () => playerLost(slotNumber);
 
         const btnExit = document.createElement("button");
         btnExit.className = "btn-remove scorekeeper-only"; 
-        btnExit.textContent = "Sair";
-        btnExit.onclick = () => removeFromSlot(slotNumber);
+        btnExit.textContent = "Sair"; btnExit.onclick = () => removeFromSlot(slotNumber);
 
         btnGroup.appendChild(btnLost);
         btnGroup.appendChild(btnExit);
-        
         li.appendChild(infoDiv);
         li.appendChild(scoreDiv);
         li.appendChild(btnGroup);
@@ -192,11 +223,13 @@ function renderSlot(slotNumber) {
     courtList.appendChild(li);
 }
 
+// ==========================================
+// 6. LÓGICA DE AÇÕES
+// ==========================================
 function updateScore(slot, change) {
     scores[slot] += change;
     if (scores[slot] < 0) scores[slot] = 0;
     if (scores[slot] > 25) scores[slot] = 25;
-    document.getElementById(`score-display-${slot}`).textContent = scores[slot];
     saveData();
 }
 
@@ -208,38 +241,33 @@ identifyBtn.addEventListener("click", () => {
         playerNameDisplay.textContent = myPlayerName;
         identifyBtn.style.display = "none";
         editIdentityBtn.style.display = "inline-block"; 
-        saveData();
+        updateFrictionlessUI();
         render();
+        saveData();
     }
 });
 
 editIdentityBtn.addEventListener("click", () => {
     if (correctionCount === 0) {
         const novoNome = prompt(`Você tem 1 CORREÇÃO SEM PENALIDADE.\nCorrigir o nome "${myPlayerName}" para qual nome?`);
-        
         if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
             const oldName = myPlayerName;
             myPlayerName = novoNome.trim();
             correctionCount++;
 
-            if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) {
-                court[1] = myPlayerName;
-            } else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) {
-                court[2] = myPlayerName;
-            } else {
+            if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) court[1] = myPlayerName;
+            else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) court[2] = myPlayerName;
+            else {
                 const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
                 if (qIndex !== -1) queue[qIndex] = myPlayerName;
             }
-
             playerNameDisplay.textContent = myPlayerName;
+            updateFrictionlessUI();
             saveData();
-            render();
-            alert("Nome corrigido com sucesso! Sua posição foi mantida.");
+            alert("Nome corrigido com sucesso!");
         }
     } else {
-        const confirmacao = confirm(`⚠️ ALERTA DE PENALIDADE ⚠️\nVocê já usou sua correção grátis.\nSe você mudar o nome de novo, será enviado para o FINAL DA FILA automaticamente.\n\nDeseja continuar?`);
-        
-        if (confirmacao) {
+        if (confirm("⚠️ PENALIDADE: Se mudar o nome agora, irá para o FINAL DA FILA. Continuar?")) {
             const novoNome = prompt("Digite o novo nome:");
             if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
                 const oldName = myPlayerName;
@@ -247,57 +275,57 @@ editIdentityBtn.addEventListener("click", () => {
                 correctionCount++;
 
                 let wasInCourt = false;
-
-                if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) {
-                    court[1] = null;
-                    wasInCourt = true;
-                } else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) {
-                    court[2] = null;
-                    wasInCourt = true;
-                } else {
+                if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) { court[1] = null; wasInCourt = true; }
+                else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) { court[2] = null; wasInCourt = true; }
+                else {
                     const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
                     if (qIndex !== -1) queue.splice(qIndex, 1); 
                 }
 
-                // A MÁGICA AQUI: Conta quantos INOCENTES tem na fila antes de jogar o fraudador lá
                 let innocentCount = queue.length;
                 queue.push(myPlayerName);
 
                 if (wasInCourt) {
                     scores = { 1: 0, 2: 0 };
-                    
-                    // Só puxa da fila para a quadra se a pessoa puxada for um inocente
-                    if (!court[1] && innocentCount > 0) {
-                        court[1] = queue.shift();
-                        innocentCount--;
-                    }
-                    if (!court[2] && innocentCount > 0) {
-                        court[2] = queue.shift();
-                        innocentCount--;
-                    }
+                    if (!court[1] && innocentCount > 0) court[1] = queue.shift();
+                    if (!court[2] && innocentCount > 0) court[2] = queue.shift();
                 }
-
                 playerNameDisplay.textContent = myPlayerName;
+                updateFrictionlessUI();
                 saveData();
-                render();
-                alert("Nome alterado. Como penalidade, você foi movido para o final da fila e a vaga ficou para o próximo.");
+                alert("Punição aplicada: Final da fila.");
             }
         }
     }
 });
 
-function addPlayer() {
-    if (!isAdmin && myPlayerName) {
-        alert(`Você já está identificado como "${myPlayerName}". Aguarde sua vez!`);
-        return; 
+// Ação do novo botão de fricção zero
+quickJoinBtn.addEventListener("click", () => {
+    if (!myPlayerName) return;
+
+    // Verifica se já está na quadra ou na fila para evitar duplicatas
+    const lowerName = myPlayerName.toLowerCase();
+    const inCourt = (court[1] && court[1].toLowerCase() === lowerName) || (court[2] && court[2].toLowerCase() === lowerName);
+    const inQueue = queue.some(p => p.toLowerCase() === lowerName);
+
+    if (inCourt || inQueue) {
+        alert(`Você já está na grade! Aguarde a sua vez ou seu jogo acabar.`);
+        return;
     }
 
+    if (!court[1]) court[1] = myPlayerName;
+    else if (!court[2]) court[2] = myPlayerName;
+    else queue.push(myPlayerName);
+    
+    saveData();
+});
+
+function addPlayer() {
     const name = inputElement.value.trim();
     if (name) {
         if (!court[1]) court[1] = name;
         else if (!court[2]) court[2] = name;
         else queue.push(name);
-        
         inputElement.value = "";
         
         if (!isAdmin) {
@@ -306,96 +334,53 @@ function addPlayer() {
             playerNameDisplay.textContent = myPlayerName;
             identifyBtn.style.display = "none"; 
             editIdentityBtn.style.display = "inline-block";
+            updateFrictionlessUI();
         }
-        
-        render();
+        saveData();
     }
 }
 
 function playerLost(slotNumber) {
     if (court[slotNumber]) {
-        queue.push(court[slotNumber]); 
-        court[slotNumber] = null;
-        scores = { 1: 0, 2: 0 }; 
+        queue.push(court[slotNumber]); court[slotNumber] = null; scores = { 1: 0, 2: 0 }; 
         if (queue.length > 0) court[slotNumber] = queue.shift();
-        render();
+        saveData();
     }
 }
-
 function removeFromSlot(slotNumber) {
     if (court[slotNumber]) {
-        queue.push(court[slotNumber]);
-        court[slotNumber] = null;
-        scores = { 1: 0, 2: 0 }; 
-        render();
+        queue.push(court[slotNumber]); court[slotNumber] = null; scores = { 1: 0, 2: 0 }; 
+        saveData();
     }
 }
-
 function forceEnter(queueIndex, slotNumber) {
     const player = queue.splice(queueIndex, 1)[0]; 
     if (court[slotNumber]) queue.push(court[slotNumber]);
-    court[slotNumber] = player;
-    scores = { 1: 0, 2: 0 }; 
-    render();
+    court[slotNumber] = player; scores = { 1: 0, 2: 0 }; 
+    saveData();
 }
-
-function removeManual(index) {
-    queue.splice(index, 1);
-    render();
-}
-
-function moveUp(index) {
-    if (index > 0) {
-        const temp = queue[index];
-        queue[index] = queue[index - 1];
-        queue[index - 1] = temp;
-        render();
-    }
-}
-
-function moveDown(index) {
-    if (index < queue.length - 1) {
-        const temp = queue[index];
-        queue[index] = queue[index + 1];
-        queue[index + 1] = temp;
-        render();
-    }
-}
+function removeManual(index) { queue.splice(index, 1); saveData(); }
+function moveUp(index) { if (index > 0) { const temp = queue[index]; queue[index] = queue[index - 1]; queue[index - 1] = temp; saveData(); } }
+function moveDown(index) { if (index < queue.length - 1) { const temp = queue[index]; queue[index] = queue[index + 1]; queue[index + 1] = temp; saveData(); } }
 
 function resetAll() {
-    if (confirm("Tem certeza que deseja apagar a grade DESTE PARQUE?")) {
+    if (confirm("Apagar grade DESTE PARQUE?")) {
         court = { 1: null, 2: null };
         scores = { 1: 0, 2: 0 };
         queue = [];
         
-        myPlayerName = null;
-        correctionCount = 0;
+        // MUDANÇA AQUI: Removemos o código que apagava a sua identidade! 
+        // O celular continua lembrando quem você é amanhã.
         
-        localStorage.removeItem(`voleiData_${currentLocal}`);
-        localStorage.removeItem(`voleiMyName_${currentLocal}`);
-        localStorage.removeItem(`voleiCorrection_${currentLocal}`);
-        
-        playerNameDisplay.textContent = "Ninguém";
-        identifyBtn.style.display = "inline-block";
-        editIdentityBtn.style.display = "none";
-        
-        render();
-        alert("Grade zerada e aparelhos desvinculados com sucesso!");
+        saveData(); // Limpa a grade no Firebase
+        alert("Grade zerada com sucesso!");
     }
 }
 
 addBtn.addEventListener("click", addPlayer);
 inputElement.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
 resetBtn.addEventListener("click", resetAll);
-
-if (resetScoreBtn) {
-    resetScoreBtn.addEventListener("click", () => {
-        if (confirm("Zerar o placar de ambas as vagas?")) {
-            scores = { 1: 0, 2: 0 };
-            render();
-        }
-    });
-}
+if (resetScoreBtn) resetScoreBtn.addEventListener("click", () => { if (confirm("Zerar placares?")) { scores = { 1: 0, 2: 0 }; saveData(); } });
 
 let isAdmin = false;
 loginBtn.addEventListener("click", () => {
@@ -403,17 +388,15 @@ loginBtn.addEventListener("click", () => {
         document.body.classList.remove("is-admin");
         isAdmin = false;
         loginBtn.textContent = "Área Admin";
+        updateFrictionlessUI(); // Atualiza a UI se saiu do admin
         render();
     } else {
-        if (!isOnline) {
-            alert("Você precisa de internet para acessar o modo Admin.");
-            return; 
-        }
-        const senha = prompt(`Digite a senha do administrador para o ${locaisNames[currentLocal]}:`);
+        const senha = prompt(`Senha para ${locaisNames[currentLocal]}:`);
         if (senha === locaisPasswords[currentLocal]) {
             document.body.classList.add("is-admin");
             isAdmin = true;
             loginBtn.textContent = "Sair do Admin";
+            updateFrictionlessUI(); // Libera as caixas de texto pro admin
             render();
         } else {
             alert("Senha incorreta!");
@@ -429,17 +412,11 @@ const statusIndicator = document.getElementById("connectionStatus");
 
 function updateNetworkStatus() {
     if (isOnline) {
-        statusIndicator.textContent = "🟢 Online";
-        statusIndicator.style.color = "#2ed573";
-        if (isAdmin) document.body.classList.add("is-admin");
-        addBtn.disabled = false;
-        inputElement.disabled = false;
+        statusIndicator.textContent = "🟢 Online"; statusIndicator.style.color = "#2ed573";
+        addBtn.disabled = false; inputElement.disabled = false;
     } else {
-        statusIndicator.textContent = "🔴 Offline";
-        statusIndicator.style.color = "#ff4757";
-        document.body.classList.remove("is-admin");
-        addBtn.disabled = true;
-        inputElement.disabled = true;
+        statusIndicator.textContent = "🔴 Offline"; statusIndicator.style.color = "#ff4757";
+        addBtn.disabled = true; inputElement.disabled = true;
     }
 }
 
@@ -455,9 +432,8 @@ function initApp() {
         lobbyContainer.style.display = "none";
         appContainer.style.display = "block";
         parkNameDisplay.textContent = locaisNames[currentLocal]; 
-        loadData();
+        startDatabaseListener();
         updateNetworkStatus();
-        render();
     } else {
         lobbyContainer.style.display = "block";
         appContainer.style.display = "none";

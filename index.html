@@ -59,11 +59,16 @@
         </div>
 
         <div class="card">
-            <h3>Adicionar Jogador</h3>
-            <div class="input-group">
+            <h3>Entrar na Grade</h3>
+            
+            <div class="input-group" id="addPlayerGroup">
                 <input type="text" id="newPlayer" placeholder="Nome do jogador">
                 <button class="btn-add" id="addBtn">Adicionar</button>
             </div>
+            
+            <button id="quickJoinBtn" class="btn-add" style="display: none; width: 100%; background: #3498db; font-size: 16px; padding: 12px;">
+                👉 Entrar na Fila
+            </button>
         </div>
 
         <div class="card admin-only-block">
@@ -73,6 +78,9 @@
 
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <script src="script.js"></script>
 </body>
 </html>
